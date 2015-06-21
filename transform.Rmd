@@ -1,0 +1,119 @@
+---
+title: 'PML: Course Project'
+author: "Stepan Bogoslovskiy"
+date: "Saturday, June 19, 2015"
+output: html_document
+---
+
+This document describes a development of model to predict the way people doing the physical excersizes. To build a model the set of various inertial sensor data has been used.
+
+## Description of experiment
+Six persons took physical excersises with various inertial sensors attached to their body.
+The sensors used are the 9-degrees of freedom IMUs attached to:
+- Belt;
+- Glove;
+- Arm-band;
+- Dumbell.
+The excersises were graded using five differen classes, marked (A), (B), (C), (D), (E).  Class (A) corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. We made sure that all participants could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
+
+## Modelling
+The goal is to model the nature of experiment to predict the grade (classe variable in dataset). 
+
+
+### Neccesary tools
+In the modelling process I used the _caret_ package to serve the learning process, the _randomForest_ as most effective package for random forest algorithm.
+
+```{r results='hold'}
+library(caret)
+library(randomForest)
+```
+
+### The Dataset
+```{r}
+dat <- read.csv("pml-training.csv")
+size <- dim(dat)
+```
+The dataset contains `r size[]` data points and `r size[2]` variables. 
+
+The several first variables are just bookkeeping, so they are irrelevant for the model and cold be removed. 
+```{r results='hold'}
+# I wan to leave source variable intact and do all transformations on a new var.
+dat.t <- dat
+names(dat.t)
+# Store classe column in an external variable for future use
+classe <- dat.t$classe
+# The columns 1 - 7 are just bookkeeping
+dat.t <- dat.t[, 8:size[2]]
+size <- dim(dat.t)
+```
+Now we have `r size[2]` variable which is still too large number. We can reduce number of variables by exploring the variance of each. The near- or zero variance variables are not useful in most models.
+
+```{r}
+nzv <- nearZeroVar(dat.t, saveMetrics = TRUE)
+summary(nzv)
+# save the logical vector of nzv for future use on the test data
+meaningfulVars <- !nzv$nzv
+
+dat.t <- dat.t[, meaningfulVars]
+size <- dim(dat.t)
+```
+Now we have a dataset of size `r size`, which is reasonable, but there might be NA values, which could be harmful for learning.
+
+```{r}
+na.values <- is.na(dat.t)
+# removing columns where more than a half of NAs
+to.remove <- colSums(na.values) > (size[1] / 2)
+dat.t <- dat.t[, !to.remove]
+size <- dim(dat.t)
+#There are no more NAs in dataset:
+na.values <- is.na(dat.t)
+sum(colSums(na.values))
+```
+The resulting set has `r size` dimensions. The number of vars is OK, and the number of data points is enough large to divide it into the training and test set.
+Smaller training set could speed up the learning, and large test set is good to validate the model.
+
+```{r}
+inTraining <- createDataPartition(dat.t$classe, p = 0.5, list = FALSE)
+dat.training <- dat.t[inTraining,]
+dat.testing <- dat.t[-inTraining,]
+```
+
+Training the model using random forest algorithm. The random forest is the best bet for this task - it has good balance between effectiveness and performance.
+
+```{r cache=TRUE}
+# train control
+control <- trainControl(method = "cv")
+# training
+rfFit <- train(classe ~ .,
+               data = dat.training,
+               method = "rf",
+               trControl = control)
+rfFit
+```
+The result is fairly good, we have about 0.99 Accuracy in cross-validation.
+Now, we can test the model on the testing part of data.
+
+```{r}
+#testing
+testPred <- predict(rfFit, dat.testing)
+postResample(testPred, dat.testing$classe)
+```
+
+The value of Accuracy is very close to the cross-validation result, that means that we successfully avoided overfitting and can try "real-world" data. At first, we should repeat all of the transformations.
+
+```{r}
+test.dat <- read.csv("pml-testing.csv")
+size <- dim(test.dat)
+test.dat <- test.dat[, 8:size[2]]
+#using meaningfulVars variable without the last (classe) variable
+test.dat <- test.dat[, meaningfulVars[1:(length(meaningfulVars)-1)]]
+#removing NAs
+test.dat <- test.dat[, !to.remove[1:(length(to.remove) - 1)]]
+```
+
+After transforming the data, we could run prediction function:
+
+```{r}
+tdatPred <- predict(rfFit, test.dat)
+tdatPred
+```
