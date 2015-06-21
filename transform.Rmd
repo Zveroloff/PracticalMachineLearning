@@ -40,13 +40,14 @@ The several first variables are just bookkeeping, so they are irrelevant for the
 # I wan to leave source variable intact and do all transformations on a new var.
 dat.t <- dat
 names(dat.t)
-# Store classe column in an external variable for future use
-classe <- dat.t$classe
 # The columns 1 - 7 are just bookkeeping
 dat.t <- dat.t[, 8:size[2]]
 size <- dim(dat.t)
 ```
-Now we have `r size[2]` variable which is still too large number. We can reduce number of variables by exploring the variance of each. The near- or zero variance variables are not useful in most models.
+Now we have `r size[2]` variable which is still too large number.
+
+### Transformation
+We can reduce number of variables by exploring the variance of each. The near- or zero variance variables are not useful in most models.
 
 ```{r}
 nzv <- nearZeroVar(dat.t, saveMetrics = TRUE)
@@ -70,6 +71,8 @@ na.values <- is.na(dat.t)
 sum(colSums(na.values))
 ```
 The resulting set has `r size` dimensions. The number of vars is OK, and the number of data points is enough large to divide it into the training and test set.
+
+### Training
 Smaller training set could speed up the learning, and large test set is good to validate the model.
 
 ```{r}
@@ -99,7 +102,10 @@ testPred <- predict(rfFit, dat.testing)
 postResample(testPred, dat.testing$classe)
 ```
 
-The value of Accuracy is very close to the cross-validation result, that means that we successfully avoided overfitting and can try "real-world" data. At first, we should repeat all of the transformations.
+The value of Accuracy is very close to the cross-validation result, that means that we successfully avoided overfitting and can try "real-world" data. 
+
+## 'Real-world' data
+At first, we should repeat all of the transformations on a test set.
 
 ```{r}
 test.dat <- read.csv("pml-testing.csv")

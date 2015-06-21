@@ -94,8 +94,6 @@ size &lt;- dim(dat)</code></pre>
 <pre class="r"><code># I wan to leave source variable intact and do all transformations on a new var.
 dat.t &lt;- dat
 names(dat.t)
-# Store classe column in an external variable for future use
-classe &lt;- dat.t$classe
 # The columns 1 - 7 are just bookkeeping
 dat.t &lt;- dat.t[, 8:size[2]]
 size &lt;- dim(dat.t)</code></pre>
@@ -179,7 +177,11 @@ size &lt;- dim(dat.t)</code></pre>
 ## [155] &quot;accel_forearm_y&quot;          &quot;accel_forearm_z&quot;         
 ## [157] &quot;magnet_forearm_x&quot;         &quot;magnet_forearm_y&quot;        
 ## [159] &quot;magnet_forearm_z&quot;         &quot;classe&quot;</code></pre>
-<p>Now we have 153 variable which is still too large number. We can reduce number of variables by exploring the variance of each. The near- or zero variance variables are not useful in most models.</p>
+<p>Now we have 153 variable which is still too large number.</p>
+</div>
+<div id="transformation" class="section level3">
+<h3>Transformation</h3>
+<p>We can reduce number of variables by exploring the variance of each. The near- or zero variance variables are not useful in most models.</p>
 <pre class="r"><code>nzv &lt;- nearZeroVar(dat.t, saveMetrics = TRUE)
 summary(nzv)</code></pre>
 <pre><code>##    freqRatio       percentUnique       zeroVar           nzv         
@@ -204,7 +206,11 @@ size &lt;- dim(dat.t)
 na.values &lt;- is.na(dat.t)
 sum(colSums(na.values))</code></pre>
 <pre><code>## [1] 0</code></pre>
-<p>The resulting set has 19622, 53 dimensions. The number of vars is OK, and the number of data points is enough large to divide it into the training and test set. Smaller training set could speed up the learning, and large test set is good to validate the model.</p>
+<p>The resulting set has 19622, 53 dimensions. The number of vars is OK, and the number of data points is enough large to divide it into the training and test set.</p>
+</div>
+<div id="training" class="section level3">
+<h3>Training</h3>
+<p>Smaller training set could speed up the learning, and large test set is good to validate the model.</p>
 <pre class="r"><code>inTraining &lt;- createDataPartition(dat.t$classe, p = 0.5, list = FALSE)
 dat.training &lt;- dat.t[inTraining,]
 dat.testing &lt;- dat.t[-inTraining,]</code></pre>
@@ -237,14 +243,30 @@ rfFit</code></pre>
 ## 
 ## Accuracy was used to select the optimal model using  the largest value.
 ## The final value used for the model was mtry = 27.</code></pre>
-<p>The result is fairly good, we have 0.99 Accuracy in cross-validation. Now, we can test the model on the testing part of data.</p>
+<p>The result is fairly good, we have about 0.99 Accuracy in cross-validation. Now, we can test the model on the testing part of data.</p>
 <pre class="r"><code>#testing
 testPred &lt;- predict(rfFit, dat.testing)
 postResample(testPred, dat.testing$classe)</code></pre>
 <pre><code>##  Accuracy     Kappa 
-## 0.9880734 0.9849107</code></pre>
-<p>The value of Accuracy is very close to the cross-validation result, that means that we successfully avoided overfitting and can try</p>
+## 0.9940877 0.9925207</code></pre>
+<p>The value of Accuracy is very close to the cross-validation result, that means that we successfully avoided overfitting and can try “real-world” data.</p>
 </div>
+</div>
+<div id="real-world-data" class="section level2">
+<h2>‘Real-world’ data</h2>
+<p>At first, we should repeat all of the transformations on a test set.</p>
+<pre class="r"><code>test.dat &lt;- read.csv(&quot;pml-testing.csv&quot;)
+size &lt;- dim(test.dat)
+test.dat &lt;- test.dat[, 8:size[2]]
+#using meaningfulVars variable without the last (classe) variable
+test.dat &lt;- test.dat[, meaningfulVars[1:(length(meaningfulVars)-1)]]
+#removing NAs
+test.dat &lt;- test.dat[, !to.remove[1:(length(to.remove) - 1)]]</code></pre>
+<p>After transforming the data, we could run prediction function:</p>
+<pre class="r"><code>tdatPred &lt;- predict(rfFit, test.dat)
+tdatPred</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
 </div>
 
 
